@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "937031264721",
+    "firebase_url": "https://qrreaderdemo.firebaseio.com",
+    "project_id": "qrreaderdemo",
+    "storage_bucket": "qrreaderdemo.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:937031264721:android:0df390f18596ce71ffd8f0",
+        "android_client_info": {
+          "package_name": "com.financia.qrreadertest"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "937031264721-4uo1oni0ourod3e1mpd33o4h58cu966q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmfdFM5HLpRJyzYj2v91YPLFRC9VYXn9Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "937031264721-4uo1oni0ourod3e1mpd33o4h58cu966q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
