@@ -113,6 +113,7 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
 
                     val rawValue = barcode.rawValue
                     Log.e("barcodes", rawValue)
+                    Toast.makeText(this@MainActivity, "scanner " + rawValue, Toast.LENGTH_SHORT).show()
 
                     val valueType = barcode.valueType
                     // See API reference for complete list of supported types
@@ -160,7 +161,7 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
         // If Android Studio complains about "this" being not a LifecycleOwner
         // try rebuilding the project or updating the appcompat dependency to
         // version 1.1.0 or higher.
-        val camera = cameraProviderFuture.get()
+        cameraProviderFuture.get()
             .bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analyzerUseCase)
 
     }
