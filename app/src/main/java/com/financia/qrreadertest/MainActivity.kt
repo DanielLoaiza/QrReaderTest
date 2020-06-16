@@ -2,33 +2,20 @@ package com.financia.qrreadertest
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
-import android.util.Size
-import android.view.Surface
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.camera2.Camera2Config
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.CameraXConfig
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.firebase.ml.vision.FirebaseVision
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.TYPE_URL
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.TYPE_WIFI
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOptions
-import com.google.firebase.ml.vision.common.FirebaseVisionImage
+import com.google.android.gms.vision.barcode.Barcode.ALL_FORMATS
+import com.google.mlkit.vision.barcode.Barcode.TYPE_URL
+import com.google.mlkit.vision.barcode.Barcode.TYPE_WIFI
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.concurrent.Executors
 
 
 // This is an arbitrary number we are using to keep track of the permission
@@ -39,28 +26,21 @@ private const val REQUEST_CODE_PERMISSIONS = 10
 // This is an array of all the permission specified in the manifest.
 private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
 
-class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider {
+class MainActivity : AppCompatActivity(), LifecycleOwner {
 
-
-    private val executor = Executors.newSingleThreadExecutor()
-
-    private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
+    private var mPreview: Preview? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+
         if (allPermissionsGranted()) {
-            view_finder.post { startCamera() }
+            camera_preview.post { startCamera() }
         } else {
             ActivityCompat.requestPermissions(
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
             )
         }
-    }
-
-    override fun getCameraXConfig(): CameraXConfig {
-        return Camera2Config.defaultConfig()
     }
 
 
@@ -73,7 +53,7 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
     ) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                view_finder.post { startCamera() }
+                camera_preview.post { startCamera() }
             } else {
                 Toast.makeText(
                     this,
@@ -85,24 +65,25 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
         }
     }
 
-    fun scanBarcodes(image: FirebaseVisionImage) {
+    fun scanBarcodes(
+        image: InputImage
+    ) {
         // [START set_detector_options]
-        val options = FirebaseVisionBarcodeDetectorOptions.Builder()
+        val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
-                FirebaseVisionBarcode.FORMAT_ALL_FORMATS
+                ALL_FORMATS
             )
             .build()
         // [END set_detector_options]
 
         // [START get_detector]
-        val detector = FirebaseVision.getInstance()
-            .getVisionBarcodeDetector(options)
+        val detector = BarcodeScanning.getClient(options)
         // Or, to specify the formats to recognize:
         // val scanner = BarcodeScanning.getClient(options)
         // [END get_detector]
-
+        preview.setImageBitmap(image.bitmapInternal)
         // [START run_detector]
-        val result = detector.detectInImage(image)
+        val result = detector.process(image)
             .addOnSuccessListener { barcodes ->
                 // Task completed successfully
                 // [START_EXCLUDE]
@@ -113,6 +94,8 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
 
                     val rawValue = barcode.rawValue
                     Log.e("barcodes", rawValue)
+                    Toast.makeText(this@MainActivity, "scanner " + rawValue, Toast.LENGTH_SHORT)
+                        .show()
 
                     val valueType = barcode.valueType
                     // See API reference for complete list of supported types
@@ -133,7 +116,6 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
             }
             .addOnFailureListener {
                 // Task failed with an exception
-                // ...
                 Log.e("error", it.message)
             }
         // [END run_detector]
@@ -141,29 +123,10 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
 
     private fun startCamera() {
 
-        // Build the viewfinder use case
-        val preview = Preview.Builder().apply {
-            setTargetResolution(Size(640, 480))
-        }.build()
-
-
-        view_finder.preferredImplementationMode = PreviewView.ImplementationMode.SURFACE_VIEW
-        preview.setSurfaceProvider(view_finder.createSurfaceProvider())
-
-        val analyzerUseCase = ImageAnalysis.Builder().apply {
-            setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
-        }.build()
-        analyzerUseCase.setAnalyzer(executor, ImageAnalyzer(this))
-
-
-        // Bind use cases to lifecycle
-        // If Android Studio complains about "this" being not a LifecycleOwner
-        // try rebuilding the project or updating the appcompat dependency to
-        // version 1.1.0 or higher.
-        val camera = cameraProviderFuture.get()
-            .bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analyzerUseCase)
-
+        mPreview = Preview(this)
+        camera_preview.addView(mPreview)
     }
+
 
     /**
      * Check if all permission specified in the manifest have been granted
