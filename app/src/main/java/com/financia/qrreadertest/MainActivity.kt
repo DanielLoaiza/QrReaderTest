@@ -2,31 +2,26 @@ package com.financia.qrreadertest
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
 import android.util.Size
-import android.view.Surface
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.Camera2Config
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.CameraXConfig
-import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.*
 import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
-import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.google.android.gms.vision.barcode.Barcode
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.firebase.ml.vision.FirebaseVision
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.TYPE_URL
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode.TYPE_WIFI
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOptions
-import com.google.firebase.ml.vision.common.FirebaseVisionImage
+import com.google.mlkit.vision.barcode.Barcode.TYPE_URL
+import com.google.mlkit.vision.barcode.Barcode.TYPE_WIFI
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.Executors
 
@@ -85,28 +80,31 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
         }
     }
 
-    fun scanBarcodes(image: FirebaseVisionImage) {
+    fun scanBarcodes(
+        image: InputImage,
+        imageProxy: ImageProxy
+    ) {
         // [START set_detector_options]
-        val options = FirebaseVisionBarcodeDetectorOptions.Builder()
+        val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
-                FirebaseVisionBarcode.FORMAT_ALL_FORMATS
-            )
+                Barcode.ALL_FORMATS)
             .build()
         // [END set_detector_options]
 
         // [START get_detector]
-        val detector = FirebaseVision.getInstance()
-            .getVisionBarcodeDetector(options)
+        val detector = BarcodeScanning.getClient(options)
         // Or, to specify the formats to recognize:
         // val scanner = BarcodeScanning.getClient(options)
         // [END get_detector]
+        live_preview.setImageBitmap(image.bitmapInternal)
 
         // [START run_detector]
-        val result = detector.detectInImage(image)
+        val result = detector.process(image)
             .addOnSuccessListener { barcodes ->
                 // Task completed successfully
                 // [START_EXCLUDE]
                 // [START get_barcodes]
+                imageProxy.close()
                 for (barcode in barcodes) {
                     val bounds = barcode.boundingBox
                     val corners = barcode.cornerPoints
@@ -135,6 +133,7 @@ class MainActivity : AppCompatActivity(), LifecycleOwner, CameraXConfig.Provider
             .addOnFailureListener {
                 // Task failed with an exception
                 // ...
+                imageProxy.close()
                 Log.e("error", it.message)
             }
         // [END run_detector]
